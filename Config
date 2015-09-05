@@ -1,0 +1,65 @@
+## Config file for P-Fkp ##
+
+REDSHIFT 0.0            // redshift for IC cooling
+
+## Input ##
+#I_TXT                  // Input from ASCII fil
+I_GADGET2              // Gadget Format 2 Input
+#I_NONE                  // Dummy Input 
+
+## Output ##    
+#O_TXT                   // Output to ASCII file
+O_BINARY               // Output to Binary Data
+
+## OPTIONS ##
+READ_MORE_INFO			// Get more velocities from snap
+VARIABLE_TIMESTEPS
+#COMPRESSION             // use curve & binary spectrum compression
+#COMPRESSION_INTERNAL    // use compression to store spectrum internally (saves RAM)
+#COMPRESSION_RANGE_WARNING // Warn if binary compression is out of range
+#TIMEVARIABLECMB
+
+## PHYSICS MODULES ##
+COMPUTE_DPP             // Make sure to enable a DPP switch as well
+
+#DPP_BRUNETTI_07         // Reacceleration from Brunetti+ 07
+#HP_BRUNETTI_07         
+#Q_CASSANO_05            // use this to compare with Cassano datA          
+
+HP_DONNERT_13
+DPP_DONNERT_13
+Q_SHOCK_PRIMARIES            // Primary injection at shocks
+#Q_SHOCK_WITH_HADRONIC_BACKGROUND
+
+
+#Q_SIMPLE_SECONDARIES   // Injection from simple cut power-law
+#Q_BRUNETTI_05          // High energy approx. Secondary Brunetti+ 05
+
+#Q_ZERO                 // Zero Injection
+T_ZERO                 // Zero Escape
+N0_ZERO                // Zero Initial Spectrum
+
+## Hard Sphere Equation ##
+#DPP_HARD_SPHERE         // Test Case (Park & Petrosian 1996
+#HP_HARD_SPHERE 5       // set according to subcase: 0..3, 4, 5
+#Q_HARD_SPHERE
+#T_HARD_SPHERE
+#N0_HARD_SPHERE         // Zero Initial Spectrum
+
+
+## Test Case Cassano 05
+#I_GADGET2              // Gadget Format 2 Input
+#O_TXT
+#O_BINARY               // Output to Binary Data
+#DPP_BRUNETTI_07         // Reacceleration from Brunetti+ 07
+#HP_BRUNETTI_07
+#Q_CASSANO_05            // use this to compare with Cassano data
+#T_ZERO                 // Zero Escape
+#N0_ZERO                // Zero Initial Spectrum
+
+## Test Case Expansion
+#DPP_EXPANSION
+#HP_EXPANSION
+#Q_ZERO
+#T_ZERO
+#N0_POWERLAW

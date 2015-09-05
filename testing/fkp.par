@@ -1,0 +1,41 @@
+%% P-Fkp Parameter File  %%
+% see common.h for infos % 
+
+Cosmo   0
+
+NIOTasks    1
+
+Input_File  ./snap_000
+Output_File ./spec/spec
+
+EndTime  10
+
+NGrid   128
+
+Pmin    5       % [me*c]
+Pmax    1e6     % [me*c]
+
+Plow    10      % [me*c]
+Phigh   9e5     % [me*c]
+
+%Module Options
+Dpp_spec_idx 2
+Xi_ep 1e-6
+
+Redshift 0
+
+%Secondaries Brunetti Q(p) options
+X_crp   0.01    % fraction rel to thermal density
+a_crp   2.6     % spectral index
+p0_crp  2       % [mp*c]
+
+
+%PGPLOT output
+PGP_Ymax 50
+PGP_Ymin 25
+
+
+%GADGET units
+UnitLength_in_cm            3.085678e21        %  1.0 kpc
+UnitMass_in_g               1.989e43           %  1.0e10 solar masses
+UnitVelocity_in_cm_per_s    1e5                %  1 km/sec

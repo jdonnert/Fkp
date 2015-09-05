@@ -1,0 +1,39 @@
+%% P-Fkp Parameter File  %%
+% see common.h for infos % 
+
+Cosmo   0
+
+NIOTasks    1
+
+Input_File  ./data/dummy.dat
+Output_File ./hard_sphere_0/spec
+
+EndTime 10
+
+NGrid   128
+
+Pmin    3.6617643e+13     % [me*c]
+Pmax    3.6617643e+21     % [me*c]
+
+Plow    3.6617643e+13     % [me*c]
+Phigh   3.6617643e+21     % [me*c]
+
+%Modules
+Module  1
+
+%Secondaries Brunetti Q(p) options
+X_crp   0.01    % fraction rel to thermal density
+a_crp   2.6     % spectral index
+p0_crp  2       % [mp*c]
+
+%Module Options
+Dpp_spec_idx 2
+
+%PGPLOT output
+PGP_Ymax 5
+PGP_Ymin -6
+
+%GADGET units
+UnitLength_in_cm            1        %  1.0 kpc
+UnitMass_in_g               1           %  1.0e10 solar masses
+UnitVelocity_in_cm_per_s    1                %  1 km/sec

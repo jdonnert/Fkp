@@ -1,0 +1,7 @@
+-- TODO --
+
+* formulate solver in terms of a - comoving
+* LCDM a2t() solver
+* code cleanup
+* boundaries as #define
+* mach switch
