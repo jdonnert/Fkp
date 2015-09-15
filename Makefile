@@ -27,12 +27,11 @@ PGPLOT_INCL  =
 PGPLOT_LIBS  =
 endif
 
-ifeq ($(SYSTYPE),getorin.ira.inaf.it)
+ifeq ($(SYSTYPE),MSI)
 CC           =  mpicc
-#OPTIMIZE     = -O3 -m64 -Wall -g -xHost -ipo4
-OPTIMIZE     = -O0 -g -xHost -Wall -m64
-MPI_LIBS     = -lmpich -lrt 
-MPI_INCL     = 
+OPTIMIZE     = -O3 -m64 -Wall -g -xHost -ipo4
+MPI_LIBS     = -lmpich -lrt -L ~/Libs/$(MYMACHINE)/lib
+MPI_INCL     = -I ~/Libs/$(MYMACHINE)/lib
 GSL_INCL     =
 GSL_LIBS     =
 PGPLOT_INCL  =

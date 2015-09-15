@@ -7,6 +7,7 @@ struct Particle_Data *P=NULL, *LastP=NULL;
 struct Gas_Data *SphP=NULL, *LastSphP=NULL;
 
 struct ParallelInfos ThisTask = { 0, 0, 0, {0} };
+#pragma omp threadprivate(Omp)
 struct OpenMP_infos Omp = { 0 };
 
 short *TimeBins = NULL;
@@ -18,9 +19,9 @@ size_t LowIdx = 0, HighIdx = 0;
 double p[N_SPEC_BINS] = { 0 }, q[N_SPEC_BINS] = { 0 };
 double dp[N_SPEC_BINS] = { 0 }, dq[N_SPEC_BINS] = { 0 }; 
 
+#pragma omp threadprivate(Flag)
 int Flag = 0, Ipart = 0;
 
-#pragma omp threadprivate(Omp,Flag)
 
 /* 
  * Memory Management 

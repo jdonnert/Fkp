@@ -122,7 +122,7 @@ void sortP_global()
   	
 	sortP_local(); 
 
-    if (LastP != NULL)
+    if (LastP == NULL)
 		goto skip_test;
     
 	for (int ipart = 0; ipart < ThisTask.Npart[0]; ipart++ ) {
@@ -171,10 +171,8 @@ void sortP_local()
     for (size_t ipart = 0; ipart < nPart; ipart++) 
         ids[ipart] = P[ipart].ID;
 
-	gsl_heapsort_index(idx, ids, nPart, sizeof(*ids), compare_ids);
-	
-	//#pragma omp parallel
-	//Qsort_Index(Omp.NThreads, idx, ids, nPart, sizeof(*ids), compare_ids);
+	#pragma omp parallel
+	Qsort_Index(Omp.NThreads, idx, ids, nPart, sizeof(*ids), compare_ids);
     
 	for (int i = 0; i < nPart; i++) {
 
