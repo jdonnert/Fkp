@@ -172,7 +172,7 @@ void sortP_local()
         ids[ipart] = P[ipart].ID;
 
 	#pragma omp parallel
-	Qsort_Index(Omp.NThreads, idx, ids, nPart, sizeof(*ids), compare_ids);
+	Qsort_Index(1, idx, ids, nPart, sizeof(*ids), compare_ids);
     
 	for (int i = 0; i < nPart; i++) {
 
@@ -208,11 +208,11 @@ void sortP_local()
 
     Free(idx); Free(ids);
 
-	#pragma omp parallel for
-    for (int ipart = 0; ipart < ThisTask.Npart[0]-1; ipart++ ) 
-		Assert(P[ipart+1].ID - P[ipart].ID > 0, 
-				"Local Sort not successful, ipart=%d ID=%d NextID=%d ",
-				ipart, P[ipart].ID, P[ipart+1].ID );
+	//#pragma omp parallel for
+    //for (int ipart = 0; ipart < ThisTask.Npart[0]-1; ipart++ ) 
+//		Assert(P[ipart+1].ID - P[ipart].ID == 1, 
+//				"Local Sort not successful, ipart=%d ID=%d NextID=%d ",
+//				ipart, P[ipart].ID, P[ipart+1].ID );
 
     return;
 }

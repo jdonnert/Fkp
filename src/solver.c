@@ -60,7 +60,7 @@ void solver()
 		double a_time = Snap.LastTime; // cosmological expansion factor
 
         double ntot = 0;
-        
+
 		while ( t < tmax ) { 
 			
 			struct Gas_Data SphP_i = { 0 };
@@ -86,7 +86,7 @@ void solver()
                 for (int i = HighIdx; i < nGrid; i++)
                     np[i] = pow(10, a*log_p[i]+ b);
             }
-            
+
 			double  Dpp[nGrid] = { 0 }, Hp[nGrid] = { 0 }, Q[nGrid] = { 0 }, 
 					T[nGrid] = { 0 };
 
@@ -98,6 +98,11 @@ void solver()
 			
 			Escape(SphP_i,  p, nGrid, T);
 			   
+//if (P[ipart].ID == 1607043)
+ //  for (int i = 0; i < nGrid; i++)
+//		printf("%d p=%g np=%g Dpp=%g Hp=%g Q=%g M=%g dt=%g\n", 
+	//			i, p[i], np[i], Dpp[i], Hp[i], Q[i], SphP_i.Mach, dt);
+
             /* no-flux boundary conditions at edge of comp domain */
             Dpp[0] = Hp[0] = 0;
             Dpp[nGrid-1] = Hp[nGrid-1] = 0;
@@ -155,7 +160,6 @@ void solver()
 
                 ntot += np[j] * dp[j];
 
-if (!isfinite(np[j])) exit(0);
             }
 
             t += dt;
@@ -189,8 +193,8 @@ if (!isfinite(np[j])) exit(0);
     } // for(ipart)
     
 	MPI_Barrier(MPI_COMM_WORLD);
-
-    return;
+    
+	return;
 }
 
 /* 

@@ -59,9 +59,11 @@ void preamble(int argc, char *argv[])
 
 	#pragma omp parallel
     {
+
     Omp.ThreadID = omp_get_thread_num();
     Omp.NThreads = omp_get_num_threads();
-    }
+    
+	}
 
   	rprintf("\n*** This is P-Fkp, a parallel Fokker Planck Solver ***\n");
 	

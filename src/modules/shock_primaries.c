@@ -9,7 +9,7 @@
 
 #include "modules.h"
 
-#define BISECTION_ACCURACY 1e-4
+#define BISECTION_ACCURACY 2e-3
 #define NSTEP 2048 // err < 5e-3 in norm integral
 
 #define HIGHCUT 1e3     // Upper Energy Cut of PowerLaw 

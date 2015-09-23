@@ -14,24 +14,33 @@
 #define INSERT_THRES 8 // insertion8sort threshold
 
 #define SWAP(a, b, size)     		\
-  	do {						    \
-      size_t __size = (size);		\
-      char *__a = (a), *__b = (b);	\
-      do {							\
-	  char __tmp = *__a;			\
-	  *__a++ = *__b;				\
-	  *__b++ = __tmp;				\
-	  } while (--__size > 0);	    \
-    } while (0)
-	
-#define SWAP_SIZE_T(a,b)				\
-	do {								\
-		size_t *__a = (a), *__b = (b);	\
-		size_t __tmp = *__a;			\
-		*__a = *__b;					\
-		*__b = __tmp;					\
-	} while (0)				
 
+	
+static inline void swap (void * restrict a, void * restrict b, size_t size)
+{
+	char *__a = a;
+	char *__b = b;
+
+    do {
+
+		char tmp = *__a;
+	  	
+		*__a++ = *__b;
+	  	*__b++ = tmp;
+
+	} while (--size > 0);
+	
+	return ;
+}
+
+static inline void swap_size_t (size_t * restrict a, size_t * restrict b)
+{
+	size_t tmp = *a;
+	*a = *b;
+	*b = tmp;
+
+	return ;
+}
 
 #define COMPARE_DATA(a,b,size) ((*cmp) ((void *)(data + *a * size), \
 	(void *)(data + *b * size))) // compare with non-permutated data
@@ -189,7 +198,7 @@ void Qsort_Index(const int nThreads, size_t *perm, void *const data,
 	Assert(perm != NULL, "*perm is a NULL pointer, no space to sort");
 	Assert(data != NULL, "*data is a NULL pointer, no space to sort");
 
-	if (nData < PARALLEL_THRES_HEAPSORT || nThreads == 1 || 1) { 
+	if (nData < PARALLEL_THRES_HEAPSORT || nThreads == 1) { 
 
 		#pragma omp single
   		gsl_heapsort_index(perm, data, nData, datasize, cmp); 
@@ -237,15 +246,15 @@ void Qsort_Index(const int nThreads, size_t *perm, void *const data,
 	  		size_t *mid = lo + ((hi - lo) >> 1); // pivot & presort
 
 			if (COMPARE_DATA(mid,lo,datasize) < 0) 
-				SWAP_SIZE_T (mid, lo);
+				swap_size_t (mid, lo);
 	
 			if (COMPARE_DATA(hi,mid,datasize) < 0)  
-				SWAP_SIZE_T (hi, mid);
+				swap_size_t (hi, mid);
 			else
 	    		goto jump_over;
 	  	
 			if (COMPARE_DATA(mid,lo,datasize) < 0) 
-				SWAP_SIZE_T (mid, lo);
+				swap_size_t (mid, lo);
 			
 			jump_over:;
 
@@ -262,7 +271,7 @@ void Qsort_Index(const int nThreads, size_t *perm, void *const data,
 
 	    		if (left < right) { 
 					
-					SWAP_SIZE_T (left, right);
+					swap_size_t (left, right);
 					
 					if (mid == left)
 			   			mid = right;
@@ -314,15 +323,15 @@ void Qsort_Index(const int nThreads, size_t *perm, void *const data,
   		size_t *mid = lo + ((hi - lo) >> 1); 
 		
 		if (COMPARE_DATA(mid,lo,datasize) < 0) 
-			SWAP_SIZE_T (mid, lo);
+			swap_size_t (mid, lo);
 
 		if (COMPARE_DATA(hi,mid,datasize) < 0)  
-			SWAP_SIZE_T (mid, hi);
+			swap_size_t (mid, hi);
 		else
 	    	goto hop_over;
   	
 		if (COMPARE_DATA(mid,lo,datasize) < 0) 
-			SWAP_SIZE_T (mid, lo);
+			swap_size_t (mid, lo);
 	
 		hop_over:;
 
@@ -339,7 +348,7 @@ void Qsort_Index(const int nThreads, size_t *perm, void *const data,
 
     		if (left < right) { 
 					
-				SWAP_SIZE_T (left, right);
+				swap_size_t (left, right);
 				
 				if (mid == left)
 		   			mid = right;
@@ -406,7 +415,7 @@ void Qsort_Index(const int nThreads, size_t *perm, void *const data,
 			trail = run;
 
 	if (trail != beg)
-		SWAP_SIZE_T(trail, beg);
+		swap_size_t(trail, beg);
 
 	size_t *run = beg + 1;
 
