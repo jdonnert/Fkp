@@ -20,7 +20,7 @@ double p[N_SPEC_BINS] = { 0 }, q[N_SPEC_BINS] = { 0 };
 double dp[N_SPEC_BINS] = { 0 }, dq[N_SPEC_BINS] = { 0 }; 
 
 #pragma omp threadprivate(Flag)
-int Flag = 0, Ipart = 0;
+int Flag = 0, Ipart = 2343828;
 
 
 /* 

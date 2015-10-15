@@ -16,21 +16,21 @@
 
 #define KNOT_MIN_DIST 4 // minimum distance between two knots 
 
-//#define DEBUG_COMPRESSION // runs only on particle IPART! 
-//#define IPART 5 // ID
+#define DEBUG_COMPRESSION // runs only on particle IPART! 
+#define IPART 119456 //754689 // ID
 
 void check_knots(const struct Knot *K, double *spectrum);
-
-static int iii = -1;
+static int find_next_power_law_index(const struct Knot *K, const double *np);
 
 static float log_p[N] = { 0 }, log_dp[N] = { 0 }, dL[N] = { 0 }, dR[N] = { 0 },
              ddL[N] = { 0 }, ddR[N] = { 0 };
 
-static size_t Nknots, KnotMemSize; // count mem size & no 
+static int Nknots, KnotMemSize; // count mem size & no 
 
-#pragma omp threadprivate(Nknots,KnotMemSize,log_p,log_dp,dL,dR,ddL,ddR,iii)
+#pragma omp threadprivate(Nknots,KnotMemSize,log_p,log_dp,dL,dR,ddL,ddR)
 
-void Compress(const float *input_spectrum, float *nCRe, char *spectrum)
+void Compress(const int ipart, const float *input_spectrum, float *nCRe, 
+		char *spectrum)
 {   
     Assert(spectrum != NULL, "Can't compress into NULL pointer");
     Assert(input_spectrum != NULL, "Can't compress from NULL pointer");
@@ -52,19 +52,27 @@ void Compress(const float *input_spectrum, float *nCRe, char *spectrum)
     find_first_knots(np, K);
 
     double curve[N] = { -DBL_MAX }; // holds reconstructed spectrum
-    int err_idx = 0;
+
     
 	for (;;) {
 
         update_control_points(K);    
 
 		draw_curve(K, curve);    
-    
-        double max_err = find_max_error(K, np, curve, &err_idx);
 
-        add_knot(np, K, err_idx, KNOT_FULL);
+    	int err_idx = 0;
+		double max_err = find_max_error(K, np, curve, &err_idx);
+		
+#ifdef Q_SHOCK_PRIMARIES
+		if (SphP[ipart].Mach > 1.1) 
+			err_idx = find_next_power_law_index(K, np);
+#endif
 
-        if (KnotMemSize + SIZEOF_FULLKNOT > SPECSIZE_BYTES)
+        bool success  = add_knot(np, K, err_idx, KNOT_FULL);
+
+		bool nospace = (KnotMemSize + SIZEOF_FULLKNOT > SPECSIZE_BYTES);
+
+        if (nospace || ! success)
             break; // the STOP knot is already accounted for
     }
     
@@ -77,6 +85,7 @@ void Compress(const float *input_spectrum, float *nCRe, char *spectrum)
 #ifdef DEBUG_COMPRESSION
     
 	if (Ipart == IPART) {
+
         char name[80];
 	    FILE *fd;
         sprintf(name, "./spec_uncompressed_%03i", Snap.SnapNum);
@@ -94,11 +103,11 @@ void Compress(const float *input_spectrum, float *nCRe, char *spectrum)
 
         sprintf(name, "./spec_knots_%03i", Snap.SnapNum);
         fd = fopen(name, "w");
-	    fprintf(fd,"#i idx, P[1], Mleft[0] Mleft[1] Mright[0] Mright[1] nCRe\n");
+	    fprintf(fd,"#i idx, P[1], Mleft[0] Mleft[1] Mright[0] Mright[1] nCRe type\n");
         for (int i = 0; i < Nknots; i++)
-            fprintf(fd, "%d %i %g %g %g %g %g %g \n", 
+            fprintf(fd, "%d %i %g %g %g %g %g %g %i\n", 
                 i, K[i].idx, K[i].P[1], K[i].Mleft[0], K[i].Mleft[1], 
-                K[i].Mright[0], K[i].Mright[1], *nCRe);
+                K[i].Mright[0], K[i].Mright[1], *nCRe, K[i].type);
 
         fclose(fd);
 	
@@ -114,15 +123,15 @@ void Uncompress(const float nCRe, const char *spectrum, double *out_spectrum)
     Assert(out_spectrum != NULL, "Can't uncompress into NULL");
     Assert(spectrum != NULL, "Can't uncompress from NULL");
 
-    if (nCRe == 0)
-        return;
-
+    if (nCRe == 0) 
+		return;
+	
 	for (int i=0; i<N; i++)
 		dR[i] = dL[i] = ddR[i] = ddL[i] = 0;
 
     struct Knot K[MAXKNOTS] = { 0 };
     
-    int nKnots = uncompress_knots_binary(spectrum, K);
+    Nknots = uncompress_knots_binary(spectrum, K);
 
     double np[N_SPEC_BINS] = { -FLT_MAX };
 
@@ -138,7 +147,8 @@ void Uncompress(const float nCRe, const char *spectrum, double *out_spectrum)
         sprintf(name, "./spec_compressed_%03i", Snap.SnapNum);
         fd = fopen(name, "w");
         for (int i = 0; i < N; i++)
-            fprintf(fd, "%d %g %g  %g \n", i, log_p[i], pow(10, np[i]*nCRe) , np[i]);
+            fprintf(fd, "%d %g %g  %g \n", i, log_p[i], pow(10, np[i]*nCRe) , 
+					np[i]);
 
         fclose(fd);
     }
@@ -159,7 +169,7 @@ void Setup_compression()
         log_dp[i] = log_p[i]-log_p[i-1];
     	
 	rprintf("Using Hermite spline compression of spectrum\n"
-			"  Max total size          : %d bytes \n"
+			"  Max total size          : %ld bytes \n"
 			"  Full knot size          : %zu bytes \n"
 			"  Half knot size          : %zu bytes \n"
 			"  Max number of knots     : %zu \n"
@@ -174,11 +184,11 @@ void Setup_compression()
  * & calc derivatives */
 double compute_spec_parameters(double *np)
 {
-    int i, global_max_idx = 0;
+    int i, global_max_idx = LowIdx; 
 
     double integral = 0;
 
-    for (i = LowIdx; i < HighIdx; i++) { // in the boundary regions is garbage 
+    for (int i = LowIdx; i < HighIdx; i++) { // in boundary regions is garbage 
 
         integral += np[i] * dp[i];
 
@@ -191,14 +201,14 @@ double compute_spec_parameters(double *np)
             global_max_idx = i;
     }
 
-	if (global_max_idx == LowIdx) // leave room for second derivative
-		global_max_idx++;
-
     const double norm = np[global_max_idx];
-    
+
     Assert(isfinite(norm) || norm == 0, "Spec norm is not finite or 0");
+
+	if (global_max_idx == 0)
+		return 0;;
     
-    for (i = LowIdx-1; i < HighIdx; i++) { // apply norm, compute derivatives
+    for (int i = LowIdx-1; i < HighIdx; i++) { // apply norm,compute derivative
         
         np[i+1] /= norm; // normalise, global max == 1 
 
@@ -243,48 +253,56 @@ void find_first_knots(const double *np, struct Knot *K)
         
         enum knot_types type = KNOT_EMPTY;
 
-        if (Nknots == 0) { // find start knot first
+		if (Nknots == 0) {
 
-            if (np[i] > threshold || np[i] == 1 ) {
+        	if ( (np[i] > threshold) || (np[i] == 1) ) {
                 
 				type = KNOT_START;
-	
+
 				ddR[i] = ddR[i+1]; // extrapolate
 				ddL[i] = ddL[i+1];
+			} 
 
-			} else        
-                continue; 
-	    }
+		} else { // Nknots != 0
 
-        int d_last = i - lastKnot;
+    	    int d_last = i - lastKnot;
 
-		if (dL[i]*dR[i] <= 0 && d_last >= KNOT_MIN_DIST && i != HighIdx-1) {
+			bool is_minmax = (dL[i]*dR[i] <= 0);
+			bool isnt_close = (d_last >= KNOT_MIN_DIST);
+			bool is_last = (i == HighIdx-1);
+			bool isnt_last = (i < HighIdx-3);
+			bool is_low = (np[i+1] < threshold);
+			bool is_steep = (dL[i+1] < -5);
 
-            type = KNOT_MINMAX;
-                
-            nMinMax++;
+			if (is_minmax && isnt_close && isnt_last ) {
+	
+    	        type = KNOT_MINMAX;
+        	        
+            	nMinMax++;
 
-        } else if (np[i+1] < threshold || dL[i+1] < -4 || i == HighIdx-1) {
+	        } else if ( is_low || is_steep || is_last ) {
 
-            type = KNOT_STOP;
+    	        type = KNOT_STOP;
 
-			ddL[i] = ddL[i-1]; // extrapolate
-			ddR[i] = ddR[i-1];
+				ddL[i] = ddL[i-1]; // extrapolate
+				ddR[i] = ddR[i-1];
 
-		}
+			}
 		    
-        if (fabs(dL[i]) < 0.01 && type == KNOT_MINMAX) 
+		} // if Nknots != 0
+    	 
+		if (fabs(dL[i]) < 0.01 && type == KNOT_MINMAX) 
             iMindL = i; // add other minmax knot here if needed
 
-        if (type == KNOT_EMPTY) 
-            continue; // nothing to add here
+	    if (type == KNOT_EMPTY) 
+    	    continue; // nothing to add here
             
-        add_knot(np, K, i, type);
+       	add_knot(np, K, i, type);
     
-        if (type == KNOT_STOP)
-            break;    
+	    if (type == KNOT_STOP)
+       	    break;    
 
-        lastKnot = i;
+       	lastKnot = i;
     }
             
     if ( (nMinMax % 2) == 0  && nMinMax != 0) 
@@ -293,7 +311,7 @@ void find_first_knots(const double *np, struct Knot *K)
     return;
 }
 
-void add_knot(const double * np, struct Knot * K, int idx, 
+static bool add_knot(const double * np, struct Knot * K, int idx, 
 		enum knot_types type)
 {
     int thisKnot = Nknots;
@@ -370,7 +388,7 @@ void add_knot(const double * np, struct Knot * K, int idx,
                 dL[idx], dR[idx], ddL[idx], ddR[idx], K[thisKnot].Is_Global_Max);
 #endif
 
-    return;
+    return true;
 }
 
 /* fills missing / updates changed control points */
@@ -415,13 +433,20 @@ void update_control_points(struct Knot *K)
 /* find y(x), cubic Hermite spline */
 void draw_curve(const struct Knot *K, double *Curve) 
 {
-    double c0[2], c1[2], c2[2], c3[2];
+    double c0[2] = { 0 }, c1[2] = { 0 }, c2[2] = { 0 }, c3[2] = { 0 };
     
-	for (int i=0; i < K[0].idx; i++)
+	for (int i = 0; i < N_SPEC_BINS; i++)
 		Curve[i] = -DBL_MAX;
     
+	int last_idx = -1;
+
 	for (int i = 0; i < Nknots-1; i++) { // def. Hermitian polynome (cspline)
-        
+
+		if (K[i].idx == last_idx)
+			continue;
+
+		last_idx = K[i].idx;
+
         c0[0] = 2*K[i].P[0] - 2*K[i+1].P[0] + K[i].Mright[0] + K[i+1].Mleft[0];
         c0[1] = 2*K[i].P[1] - 2*K[i+1].P[1] + K[i].Mright[1] + K[i+1].Mleft[1];
 
@@ -446,24 +471,25 @@ void draw_curve(const struct Knot *K, double *Curve)
 
 			float t = 0, q = 0;
 			int it = 0;
+			float logpj = log_p[j];
 
-			do { // Newton-Raphson, damn it's fast 
+			for (it = 0; it < 30; it++) { // Newton-Raphson, damn it's fast 
 
 				q = c0[0]*t*t*t + c1[0]*t*t + c2[0]*t + c3[0];
-				t -= (q - log_p[j]) / (3*c0[0]*t*t + 2 * c1[0]*t + c2[0]);
+				t -= (q - logpj) / (3*c0[0]*t*t + 2 * c1[0]*t + c2[0]);
 
-			} while ( fabs(q-log_p[j]) / log_p[j] > 1e-2 && it++ < 50 );
+				if (fabs(q/logpj-1) < 1e-2)
+					break;
+			} 
 	
-			if(it > 49) 
-				printf("Newton-Raphson failed ID=%d %d %g %g %g\n", 
-						Ipart, j, log_p[j], q, t); 
-
+			if(it > 29) 
+				printf("Newton-Raphson failed Ipart=%d j=%d "
+						"logpj=%g q=%g t=%g =%d Nknots=%d K[i].idx=%d\n", 
+						Ipart, j, logpj, q, t, i, Nknots, K[i].idx); 
+			
 			Curve[j] = c0[1]*t*t*t + c1[1]*t*t + c2[1]*t + c3[1];
         }
     }
-
-	for (int i = K[Nknots-1].idx+1; i < N; i++)
-		Curve[i] = -DBL_MAX;
     
 	return;
 }
@@ -481,6 +507,9 @@ float find_max_error(const struct Knot *K, const double *np,
 
 		int jMin = K[i].idx + KNOT_MIN_DIST;
 		int jMax = K[i+1].idx - KNOT_MIN_DIST;
+		
+		if (K[i+1].idx-K[i+1].idx < 2*KNOT_MIN_DIST) // too close
+			continue;
 
     	for (int j = jMin; j < jMax; j++) {
 
@@ -503,6 +532,17 @@ float find_max_error(const struct Knot *K, const double *np,
     }
 
     return max_err;
+}
+
+static int find_next_power_law_index(const struct Knot *K, const double *np)
+{
+	int start_idx = K[0].idx;
+	int stop_idx = K[Nknots-1].idx;
+
+	if (Ipart == IPART) 
+		printf("FIND NEXT %d %d \n", start_idx, stop_idx);
+
+	return start_idx + (stop_idx - start_idx)/2;
 }
 
 void check_knots(const struct Knot *K, double *spectrum)
@@ -531,14 +571,15 @@ void check_knots(const struct Knot *K, double *spectrum)
 	}
 
 	if (err_max > 0.1)
-		printf("CHECK: ID=%zu, idx=%d, err=%g, curve=%g, spec=%g \n", 
-				Ipart, i_err_max, err_max, curve[i_err_max], spectrum[i_err_max]);
+		printf("CHECK: ID=%d, idx=%d, err=%g, curve=%g, spec=%g \n", 
+				Ipart, i_err_max, err_max, curve[i_err_max],
+				spectrum[i_err_max]);
 	
 	for(int i = 0; i < Nknots; i++) {
 
 		if (K[i].P[1] > 8 || K[i].P[1] < -8)
 			printf("CHECK: P1=%g ID=%d idx=%d type=%d \n", 
-					K[i].P[1], Ipart, K[i].idx);
+					K[i].P[1], Ipart, K[i].idx, K[i].type);
 
 		if (K[i].Mleft[1] > 8 || K[i].Mleft[1] < -8)
 			printf("CHECK: Mleft1=%g ID=%d idx=%d type=%d\n", 
@@ -589,8 +630,6 @@ void compress_knots_binary(const struct Knot *K, char *spectrum)
 
         int8_t idx = K[i].idx;
 
-        iii = K[i].idx;
-            
         if (K[i].type == KNOT_FULL) { // KNOT_FULL
             
             fp.x = 0x80 | idx; // mark first bit to set KNOT_FULL
@@ -811,8 +850,8 @@ uint8_t compressFloat_8bit(float input)
     if (input > 3 || input < -1) {
 
         rprintf("8bit Compression, input out of range "
-                "num=%g ipart=%d ID=%d idx=%d  \n",
-                input , Ipart, P[Ipart].ID, iii);   
+                "num=%g ipart=%d ID=%d  \n",
+                input , Ipart, P[Ipart].ID);   
         Flag=1;
     }
 #endif

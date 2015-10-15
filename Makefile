@@ -29,9 +29,9 @@ endif
 
 ifeq ($(SYSTYPE),MSI)
 CC           =  mpicc
-OPTIMIZE     = -O2 -m64 -Wall -g -xHost
-MPI_LIBS     = -lmpich -lrt -L /home/jonestw/donne219/Libs/$(MYMACHINE)/lib
-MPI_INCL     = -I /home/jonestw/donne219/Libs/$(MYMACHINE)/include
+OPTIMIZE     = -O2 -Wall -g -xHost
+MPI_LIBS     = -lmpich -lrt -L$(LD_LIBRARY_PATH)
+MPI_INCL     = -I$(INCLUDE)
 GSL_INCL     =
 GSL_LIBS     =
 PGPLOT_INCL  =

@@ -72,5 +72,5 @@ void stop_timing(enum TimeMarks mark)
 
 double get_current_time()
 {
-	//return MPI_Wtime();
+	return MPI_Wtime();
 }

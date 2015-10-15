@@ -1,6 +1,6 @@
 ## Config file for P-Fkp ##
 
-REDSHIFT 0.0            // redshift for IC cooling
+REDSHIFT 0.188            // redshift for IC cooling
 
 ## Input ##
 #I_TXT                  // Input from ASCII fil
@@ -14,7 +14,7 @@ O_BINARY               // Output to Binary Data
 ## OPTIONS ##
 READ_MORE_INFO			// Get more velocities from snap
 VARIABLE_TIMESTEPS
-#COMPRESSION             // use curve & binary spectrum compression
+COMPRESSION             // use curve & binary spectrum compression
 #COMPRESSION_INTERNAL    // use compression to store spectrum internally (saves RAM)
 #COMPRESSION_RANGE_WARNING // Warn if binary compression is out of range
 #TIMEVARIABLECMB

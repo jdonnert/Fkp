@@ -179,7 +179,7 @@ void calc_timesteps();
 void sortP_global();
 
 #ifdef COMPRESSION
-void Compress(const float*, float *, char *);
+void Compress(const int, const float*, float *, char *);
 void Uncompress(const float, const char *, double*);
 void Setup_compression();
 #endif

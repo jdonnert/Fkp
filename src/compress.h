@@ -37,9 +37,10 @@ struct full_point { // 72 bit compressed, type FULL_KNOT
 #pragma pack(pop) // pop/restore former packing value
 
 static void find_first_knots(const double *, struct Knot *),
-            add_knot(const double *,struct Knot *, int, enum knot_types),
             draw_curve(const struct Knot *, double *),
             update_control_points(struct Knot *);
+
+static bool add_knot(const double *,struct Knot *, int, enum knot_types);
 
 static float find_max_error(const struct Knot *,const double *,double *,int *);
 

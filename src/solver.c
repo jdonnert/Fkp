@@ -181,7 +181,7 @@ void solver()
          
 #ifdef COMPRESSION_INTERNAL  
 
-        Compress(np, &SphP[ipart].Ncre_total, SphP[ipart].CReSpectrum);
+        Compress(ipart, np, &SphP[ipart].Ncre_total, SphP[ipart].CReSpectrum);
 
 #else
 

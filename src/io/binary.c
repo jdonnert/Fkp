@@ -50,15 +50,18 @@ void write_spectra()
     const int groupMaster = (ThisTask.Rank / groupSize) * groupSize;
     const int groupLast = fmin(groupMaster + groupSize - 1, nTask-1);
 	
-
 	size_t nBytes = Snap.Npart[0] * SizeSpectrumBytes;
 
 #ifndef COMPRESSION
-    rprintf("\nParallel Write of %zu MB in %ld files smaller than %d MB :\n", 
+    
+	rprintf("\nParallel Write of %zu MB in %ld files smaller than %d MB :\n", 
 			nBytes/1024/1024, nGroups, MAXFILESIZE/1024/1024);
+
 #else
-    rprintf("\nParallel Compressed Write of %zu MB in %ld files smaller than %d MB :\n", 
-			nBytes/1024/1024, nGroups, MAXFILESIZE/1024/1024);
+    
+	rprintf("\nParallel Compressed Write of %zu MB in %d files smaller "
+			"than %d MB :\n", nBytes/1024/1024, nGroups, MAXFILESIZE/1024/1024);
+
 #endif // COMPRESSION
 
     write_file_parallel(groupSize, groupMaster, groupLast);
@@ -101,9 +104,9 @@ static void write_file_parallel(int groupSize, int groupMaster, int groupLast)
     char fname[MAXLINELENGTH];
 
     if (Param.N_IOTasks < 2 || ThisTask.NTask == 1)
-        sprintf(fname,"%s_%03li",Param.Output_File, Snap.SnapNum);
+        sprintf(fname,"%s_%03i",Param.Output_File, Snap.SnapNum);
     else 
-        sprintf(fname,"%s_%03li.%d", Param.Output_File, Snap.SnapNum, 
+        sprintf(fname,"%s_%03i.%d", Param.Output_File, Snap.SnapNum, 
 				thisGroup);
 
     /* find number of particles in file */
@@ -144,31 +147,38 @@ static void write_file_parallel(int groupSize, int groupMaster, int groupLast)
     
 	char *sendbuf = Malloc(nBytes);
     
-	size_t idx = 0;
-
-	for (size_t ipart=0; ipart<ThisTask.Npart[0]; ipart++) { // fill sendbuf
+	//#pragma omp parallel for
+	for (int ipart = 0; ipart < ThisTask.Npart[0]; ipart++) { // fill sendbuf
 
 #ifdef COMPRESSION
 
-		char creSpectrum[SPECSIZE_BYTES] = {0};
+		char creSpectrum[SPECSIZE_BYTES] = { 0 };
 		float nCRe = 0;
-		Ipart = P[ipart].ID;
-		
-		Compress(&SphP[ipart].Ncre[0], &nCRe, creSpectrum);
-	
+
+		Ipart = P[ipart].ID; // for DEBUG
+
+if (Ipart == 119455+1) {
+	for (int i = 0; i < 128; i++)
+printf("%d %g %d %g %g %g \n", ipart, nCRe, i, p[i], SphP[ipart].Ncre[i] ,SphP[ipart].Mach );
+
+		Compress(ipart, &SphP[ipart].Ncre[0], &nCRe, creSpectrum);
+
+	//nCRe = 14041981;
+}
+
+		size_t idx = ipart * (sizeof(nCRe) + SPECSIZE_BYTES);
+
 		memcpy(&sendbuf[idx], &nCRe, sizeof(nCRe));
-		
+
 		idx += sizeof(nCRe);
 		
-		memcpy(sendbuf+idx, creSpectrum, SPECSIZE_BYTES*sizeof(char));
-
-		idx += SPECSIZE_BYTES;
+		memcpy(&sendbuf[idx], creSpectrum, SPECSIZE_BYTES);
 
 #else // !COMPRESSION
 
-		memcpy(sendbuf+idx, SphP[ipart].Ncre, N_SPEC_BINS*sizeof(float));
+		size_t idx = ipart * N_SPEC_BINS*sizeof(float);
 		
-		idx += N_SPEC_BINS*sizeof(float);
+		memcpy(&sendbuf[idx], SphP[ipart].Ncre, N_SPEC_BINS*sizeof(float));
 
 #endif // !COMPRESSION
 	}
@@ -211,6 +221,10 @@ static void write_file_parallel(int groupSize, int groupMaster, int groupLast)
 
 void read_spectra()
 {
+#ifdef COMPRESSION_INTERNAL
+    Assert(0, "Reading Spectra into internalt compression not implemented");
+#endif
+
     const int nTask = ThisTask.NTask;
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -221,7 +235,7 @@ void read_spectra()
 
         char fname[MAXLINELENGTH];
         
-        sprintf(fname,"%s_%03li",Param.Output_File, Snap.SnapNum);
+        sprintf(fname,"%s_%03i", Param.Output_File, Snap.SnapNum);
 
         nFiles = Find_files(fname);
 
@@ -271,9 +285,9 @@ static void read_file_parallel(int nFiles, int groupSize, int groupMaster,
         char fname[MAXLINELENGTH]; // construct filename 
 
         if (nFiles == 1)
-            sprintf(fname,"%s_%03li",Param.Output_File, Snap.SnapNum);
+            sprintf(fname,"%s_%03i",Param.Output_File, Snap.SnapNum);
         else 
-            sprintf(fname,"%s_%03li.%d", Param.Output_File, Snap.SnapNum, 
+            sprintf(fname,"%s_%03i.%d", Param.Output_File, Snap.SnapNum, 
                 thisGroup);
 
         FILE *fp = fopen(fname, "r"); 
@@ -285,12 +299,12 @@ static void read_file_parallel(int nFiles, int groupSize, int groupMaster,
         Assert(Head.Npart == nPartGroup, "Inconsistent particle numbers"
         "Ngroup=%lld, Nfile=%lld ", nPartGroup, Head.Npart);
 
-        printf("Reading %d spectra from %s to tasks %d to %d\n", nPartGroup, 
+        printf("Reading %lld spectra from %s to tasks %d to %d\n", nPartGroup, 
                 fname, groupMaster, groupLast);
 
-        size_t nBytes = Head.SpecSizeBytes * Head.Npart; //allocate read buffer
+        size_t nBytes = Head.SpecSizeBytes * Head.Npart; 
 
-        readBuf = Malloc(nBytes);  
+        readBuf = Malloc(nBytes);   
          
         fread(readBuf, nBytes, 1, fp);
 
@@ -307,9 +321,7 @@ static void read_file_parallel(int nFiles, int groupSize, int groupMaster,
            "Not all needed IDs found in file, LastFileID=%d LastTaskID=%d",
                 Head.StartID+Head.Npart-1, P[nPart-1].ID);
 
-    int nBytes = Head.SpecSizeBytes * nPart; // allocate comm buf
-
-    void *commBuf = Malloc(nBytes);
+    const int nBytes = Head.SpecSizeBytes * nPart; 
 
     int nBytesGroup[groupSize]; // find transfer sizes
 
@@ -318,8 +330,11 @@ static void read_file_parallel(int nFiles, int groupSize, int groupMaster,
     int offsets[groupSize]; // find displacements
     
     offsets[0] = 0;
+
     for (int i = 1; i < groupSize; i++) 
         offsets[i] = offsets[i-1] + nBytesGroup[i-1]; 
+
+    char *commBuf = Malloc(nBytes); // allocate comm buf
 
     MPI_Scatterv(readBuf, nBytesGroup, offsets, MPI_BYTE, commBuf, nBytes, 
             MPI_BYTE, 0, groupComm);
@@ -327,46 +342,48 @@ static void read_file_parallel(int nFiles, int groupSize, int groupMaster,
     if (ThisTask.Rank == groupMaster)
         Free(readBuf);
 
-    nBytes = Head.SpecSizeBytes; // distribute locally into SphP struct
 
-#ifndef COMPRESSION_INTERNAL
     if (Head.FlagCompressed == 0) { // uncompressed file
 
         float *src = (float*) commBuf;
 
+		#pragma omp parallel for private(src)
         for (int ipart = 0; ipart < nPart; ipart++) 
             for (int j = 0; j < N_SPEC_BINS; j++) 
                 SphP[ipart].Ncre[j] = src[ipart*N_SPEC_BINS + j];
 
     } else { // commBuf is compressed
 
-        Assert(SPECSIZE_BYTES == Head.SpecSizeBytes, 
+        Assert(SizeSpectrumBytes == Head.SpecSizeBytes, 
                 "Compressed spec size differ: code=%zu, file=%zu",
-                SPECSIZE_BYTES, Head.SpecSizeBytes);
+                SizeSpectrumBytes, Head.SpecSizeBytes);
 
-        char *src = commBuf;
-            
-        char creSpectrum[SPECSIZE_BYTES] = {0};
-        float nCRe = 0;
-            
         for (int ipart = 0; ipart < nPart; ipart++) {
                 
-            memcpy(&nCRe, src, sizeof(float) );
-                
-            src += sizeof(float);
+        	char creSpectrum[SPECSIZE_BYTES] = {0};
+	        float nCRe = 0;
 
-            memcpy(creSpectrum, src, SPECSIZE_BYTES);
+			size_t idx = ipart * (SizeSpectrumBytes);
 
-            src += SPECSIZE_BYTES;
+            memcpy(&nCRe, &commBuf[idx], sizeof(float));
+
+            idx += sizeof(float);
+
+            memcpy(creSpectrum, &commBuf[idx], SPECSIZE_BYTES);
+
+    		double np[N_SPEC_BINS] = { -FLT_MAX };
+
+			Uncompress(nCRe, creSpectrum, np);
+
+			for (int i = 0; i < N_SPEC_BINS; i++)
+				SphP[ipart].Ncre[i] = log10(np[i]);
         }
         
     }
-#else // defined(COMPRESSION_INTERNAL)
-    Assert(0, "not implemented");
-#endif
 
     Free(commBuf);
-    MPI_Comm_free(&groupComm);
+    
+	MPI_Comm_free(&groupComm);
 
     MPI_Barrier(MPI_COMM_WORLD);
     
@@ -387,7 +404,7 @@ static void write_header(FILE *fp, char *fname, uint64_t npart_file)
     Head.Phigh = Param.Phigh/(m_e*c);
 #ifdef COMPRESSION
     Head.FlagCompressed = 1;
-    Head.SpecSizeBytes = SPECSIZE_BYTES;
+    Head.SpecSizeBytes = SPECSIZE_BYTES + sizeof(float);
 #else 
     Head.FlagCompressed = 0;
     Head.SpecSizeBytes = N_SPEC_BINS * sizeof(float);
