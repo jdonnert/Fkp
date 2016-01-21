@@ -5,7 +5,7 @@
 
 #ifdef Q_SHOCK_PRIMARIES
 
-//#define DEBUG
+#define DEBUG
 
 #include "modules.h"
 
@@ -153,23 +153,17 @@ static void downstream_quantities(const struct Gas_Data SphP_i, double *Temp_dw,
 	*EpsCRe = eta_cre * (epsTherm_dw - epsTherm_up * pow(sigma, gamma)); 
 		// cgs, Ensslin+ 2007
 
+#ifdef DEBUG
 if (SphP_i.ID == 1607043) 
 	printf("EpsCRe = %g, epsdw=%g epsup=%g sigma=%g mach=%g "
 			"rho_up=%g pres_up=%g ID=%d \n", 
 			*EpsCRe, epsTherm_dw,epsTherm_up, sigma, mach, rho_up,
 			pres_up, SphP_i.ID);
+#endif
 
-	if (*EpsCRe < 0 || !isfinite(*EpsCRe)) {
-
-		double vshock = SphP_i.Shock_Velocity;
-
-		printf("EpsCRe = %g, epsdw=%g epsup=%g sigma=%g mach=%g vshock=%g "
-			"rho_up=%g pres_up=%g ID=%d \n", 
-			*EpsCRe, epsTherm_dw,epsTherm_up, sigma, mach, vshock, rho_up,
-			pres_up, SphP_i.ID);
-
+	if (*EpsCRe < 0 || !isfinite(*EpsCRe)) 
 		*EpsCRe = 0;
-	}
+	
 
 	return ;
 }

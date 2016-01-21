@@ -16,21 +16,10 @@ GSL_LIBS 	=
 PGPLOT_INCL = 
 PGPLOT_LIBS =
 
-ifeq ($(SYSTYPE),geeuw.strw.leidenuniv.nl)
-CC           =  mpicc
-OPTIMIZE     = -O3 -m64 -Wall -g -march=native -mtune=native -flto -fwhole-program
-MPI_LIBS     = -lmpich -lrt 
-MPI_INCL     = 
-GSL_INCL     = -I/home/jdonnert/Libs/include
-GSL_LIBS     = -L/home/jdonnert/Libs/lib
-PGPLOT_INCL  =
-PGPLOT_LIBS  =
-endif
-
 ifeq ($(SYSTYPE),MSI)
-CC           =  mpicc
-OPTIMIZE     = -O2 -Wall -g -xHost
-MPI_LIBS     = -lmpich -lrt -L$(LD_LIBRARY_PATH)
+CC           =  mpicc -cc=icc
+OPTIMIZE     = -O0 -Wall -g -xHost
+MPI_LIBS     = -lmpi -lrt -L$(LD_LIBRARY_PATH)
 MPI_INCL     = -I$(INCLUDE)
 GSL_INCL     =
 GSL_LIBS     =
@@ -39,14 +28,14 @@ PGPLOT_LIBS  =
 endif
 
 ifeq ($(SYSTYPE),para33.strw.leidenuniv.nl)
-	CC           =  mpicc
+CC           =  mpicc
 OPTIMIZE     = -O3  -m64 -g -march=native -flto -fwhole-program
-	MPI_LIBS     = -lmpich -lrt
-	MPI_INCL     =
-	GSL_INCL     =
-	GSL_LIBS     =
-	PGPLOT_INCL  =
-	PGPLOT_LIBS  =
+MPI_LIBS     = -lmpich -lrt
+MPI_INCL     =
+GSL_INCL     =
+GSL_LIBS     =
+PGPLOT_INCL  =
+PGPLOT_LIBS  =
 endif
 
 
